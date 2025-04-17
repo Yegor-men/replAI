@@ -1,2 +1,2 @@
 name = "Joe Biden"
-description = "god of rizzing and zbloinking and shaboinking"
+description = "mr rizzident of the joenited joestates of joemerica"

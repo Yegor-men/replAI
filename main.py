@@ -13,7 +13,7 @@ from characters.character_cards import replAI
 import datetime
 
 should_create_new_chat = True
-chat_name = "test_3"
+chat_name = "test_5"
 
 if should_create_new_chat:
     create_new_chat(chat_name)

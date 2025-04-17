@@ -1,5 +1,5 @@
 
-![Logo](misc/replAI logo.png)
+![Logo](https://github.com/Yegor-men/replAI/blob/main/misc/replAI%20logo.png)
 
 
 # replAI
