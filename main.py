@@ -1,119 +1,49 @@
-from system_prompts.test_sys_prompt import sys_prompt
-from personalities.personality_class import Personality
-import ollama
-import datetime
-import json
+from functions.create_new_chat import create_new_chat
+from functions.load_json_chat import load_json_chat
+from functions.save_json_chat import save_json_chat
+from functions.ai_send_message import ai_send_message
+from functions.user_send_message import user_send_message
+
+from system_prompts.system_prompt import system_prompt
+
+from characters.character import Character
+from characters.character_cards import joe
+from characters.character_cards import replAI
+
+should_create_new_chat = True
+chat_name = "test_2"
+
+if should_create_new_chat:
+    create_new_chat(chat_name)
 
 
-def load_chat_history():
-    try:
-        with open("chats/test.json", "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
-        return []
+ai_class_instance = Character(character_card=replAI)
+
+user_class_instance = Character(character_card=joe)
 
 
-def save_chat_history(chat_history):
-    with open("chats/test.json", "w") as f:
-        json.dump(chat_history, f, indent=4)
+from functions.print_chat_history import print_chat_history
 
 
 modelname = "gemma3:12b"
+filepath = f"chats/{chat_name}.json"
 
-
-def ai_send_message(
-    chat_format_function,
-    model_name,
-    ai_class_instance,
-    user_class_instance,
-):
-    # Load chat history from JSON
-    chat_history = load_chat_history()
-
-    # Format messages for the model
-    formatted_messages = chat_format_function(chat_history)
-    formatted_messages += [
-        {
-            "role": "system",
-            "content": sys_prompt(ai_class_instance, user_class_instance),
-        }
-    ]
-
-    # Get response from model
-    response = ""
-    stream = ollama.chat(
-        model=model_name,
-        messages=formatted_messages,
-        stream=True,
-    )
-
-    for chunk in stream:
-        content = chunk["message"]["content"]
-        content = content.replace("~", "\n")
-        print(content, end="", flush=True)
-        response += chunk["message"]["content"]
-
-    # Create timestamp
-    current_time = datetime.datetime.now()
-    timestamp = current_time.strftime("%d/%m/%Y, %H:%M")
-
-    # Add response to chat history
-    chat_history.append(
-        {"sender": ai_class_instance.name, "timestamp": timestamp, "message": response}
-    )
-
-    save_chat_history(chat_history)
-
-
-joe_biden = Personality(name="joe biden", description="mistah rizzident")
-ai_assist = Personality(name="replAI", description="super smart AI assistant")
-
-
-def format_chat_history(chat_history):
-    formatted_messages = []
-    for message in chat_history:
-        if message["sender"] == ai_assist.name:
-            role = "assistant"
-        else:
-            role = "user"
-        formatted_messages.append(
-            {
-                "role": role,
-                "content": f'{message["sender"]}-{message["timestamp"]}: {message["message"]}',
-            }
-        )
-    return formatted_messages
-
-
-# ai_send_message(
-#     chat_format_function=format_chat_history,
-#     model_name=modelname,
-#     ai_class_instance=ai_assist,
-#     user_class_instance=joe_biden,
-# )
-
-
-def user_send_message(
-    user_class_instance,
-    message: str,
-):
-    current_time = datetime.datetime.now()
-    timestamp = current_time.strftime("%d/%m/%Y, %H:%M")
-
-    chat_history = load_chat_history()
-    chat_history.append(
-        {"sender": user_class_instance.name, "timestamp": timestamp, "message": message}
-    )
-    save_chat_history(chat_history)
-
+print_chat_history(filepath)
 
 while True:
-    message = input()
-    user_send_message(joe_biden, message)
+    user_message = input()
+    if user_message == "/q":
+        break
+    user_send_message(
+        json_chat_filepath=filepath,
+        user_class_instance=user_class_instance,
+        message=user_message,
+    )
 
     ai_send_message(
-        chat_format_function=format_chat_history,
+        json_chat_filepath=filepath,
+        system_prompt_function=system_prompt,
         model_name=modelname,
-        ai_class_instance=ai_assist,
-        user_class_instance=joe_biden,
+        ai_class_instance=ai_class_instance,
+        user_class_instance=user_class_instance,
     )
