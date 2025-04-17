@@ -7,8 +7,8 @@ from functions.user_send_message import user_send_message
 from system_prompts.system_prompt import system_prompt
 
 from characters.character import Character
-from characters.character_cards import joe
-from characters.character_cards import replAI
+from characters.character_cards import joe as ai
+from characters.character_cards import walter as user
 
 import datetime
 
@@ -19,9 +19,9 @@ if should_create_new_chat:
     create_new_chat(chat_name)
 
 
-ai_class_instance = Character(character_card=replAI)
+ai_class_instance = Character(character_card=ai)
 
-user_class_instance = Character(character_card=joe)
+user_class_instance = Character(character_card=user)
 
 
 modelname = "gemma3:12b"
