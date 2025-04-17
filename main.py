@@ -10,8 +10,10 @@ from characters.character import Character
 from characters.character_cards import joe
 from characters.character_cards import replAI
 
+import datetime
+
 should_create_new_chat = True
-chat_name = "test_2"
+chat_name = "test_3"
 
 if should_create_new_chat:
     create_new_chat(chat_name)
@@ -22,15 +24,17 @@ ai_class_instance = Character(character_card=replAI)
 user_class_instance = Character(character_card=joe)
 
 
-from functions.print_chat_history import print_chat_history
-
-
 modelname = "gemma3:12b"
 filepath = f"chats/{chat_name}.json"
+
+from functions.print_chat_history import print_chat_history
 
 print_chat_history(filepath)
 
 while True:
+    current_time = datetime.datetime.now()
+    timestamp = current_time.strftime("%d/%m/%Y, %H:%M")
+    print(f"\n\n[{timestamp}] - {user_class_instance.name}:")
     user_message = input()
     if user_message == "/q":
         break
@@ -39,7 +43,11 @@ while True:
         user_class_instance=user_class_instance,
         message=user_message,
     )
-
+    
+    current_time = datetime.datetime.now()
+    timestamp = current_time.strftime("%d/%m/%Y, %H:%M")
+    print(f"\n\n[{timestamp}] - {ai_class_instance.name}:\n")
+    
     ai_send_message(
         json_chat_filepath=filepath,
         system_prompt_function=system_prompt,
