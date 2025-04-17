@@ -1,5 +1,5 @@
 
-![Logo](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/th5xamgrr6se0x5ro4g6.png)
+![Logo](misc/replAI logo.png)
 
 
 # replAI
@@ -20,12 +20,14 @@ replAI (pronounced [/ɹɪˈplaɪ/](https://en.wiktionary.org/wiki/reply)) aims t
 - Allows both the user and the AI to chain messages
 ## Roadmap
 
-- Implement support for other local backends
-- Implement support for online providers
-- Implement image uploads and image recognition
-- Allow the AI to generate images
 - Make the AI sometimes initiate conversations by itself
 - Add memory embedding
+- Implement image uploads and image recognition
+- Create "servers" where multiple AIs can interact
+- Allow the AI to generate images
+- Implement support for other local backends
+- Implement support for online providers
+
 ## Installation
 
 This assumes that you have the backend (Ollama for now) installed.
