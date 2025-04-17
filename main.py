@@ -4,16 +4,16 @@ from functions.save_json_chat import save_json_chat
 from functions.ai_send_message import ai_send_message
 from functions.user_send_message import user_send_message
 
-from system_prompts.system_prompt import system_prompt
+from system_prompts.system_prompt import system_prompt as system_prompt
 
 from characters.character import Character
-from characters.character_cards import joe as ai
-from characters.character_cards import walter as user
+from characters.character_cards import foo2 as ai
+from characters.character_cards import foo1 as user
 
 import datetime
 
 should_create_new_chat = True
-chat_name = "test_5"
+chat_name = "more_real_test1"
 
 if should_create_new_chat:
     create_new_chat(chat_name)
