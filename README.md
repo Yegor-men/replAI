@@ -1,5 +1,5 @@
 
-![Logo](https://github.com/Yegor-men/replAI/blob/main/misc/replAI%20logo.png)
+![Logo](https://github.com/Yegor-men/replAI/blob/main/misc/replAI_banner.png)
 
 
 # replAI
@@ -13,11 +13,12 @@ Point is, **there is no easy way to text message an AI as you would in real life
 replAI (pronounced [/ɹɪˈplaɪ/](https://en.wiktionary.org/wiki/reply)) aims to fix that. Both you and the AI of your choice converse via text messages. Naturally presented, naturally flowing. Send one message or send many. replAI aims to recreate the feeling of texting like on any other app.
 ## Features
 
-- Supports local backends such as Ollama
-- Multiple DM channels with multiple personalities (for you and the AI)
+- Uses Ollama as the local backend
+- Shared personality feature, both the AI and human can play the same persona
+- Allows for multiple channels with different personas
 - Does NOT rely on tool calling. Any model can be used
 - AI is aware of the time that the messages were sent at
-- Allows both the user and the AI to chain messages
+- Allows both the user and the AI to send messages whenever, like in real texting
 ## Roadmap
 
 - Make the AI sometimes initiate conversations by itself
@@ -39,7 +40,7 @@ git clone https://github.com/Yegor-men/replAI
 pip install -r requirements.txt
 python main.py
 ```
-and then visit [http://localhost:7860] to open the frontend.
+and then visit [http://localhost:7860]() to open the frontend.
     
 ## Documentation
 
