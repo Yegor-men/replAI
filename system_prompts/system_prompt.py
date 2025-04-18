@@ -20,5 +20,5 @@ def system_prompt(
         f" and then quote what {user_class_instance.name} has said in the message, word for word. Remember that tiles (~) split messages.\n"
         f"The time right now is {formatted_current_time}, make sure to keep the interaction real and immersive.\n"
         f"Do not overuse quotes/citations. Do not spam questions. Do not spam messages. Keep it reasonable. Keep it real. Keep the conversation somewhat flowing, but make sure to ask and answer follow-up questions.\n"
-        f"When responding/answering/asking to messages, make sure to answer to them sequentially."
+        f"When responding/answering/asking to messages, make sure to answer to them sequentially. ONLY RETURN THE MESSAGES, DO NOT MENTION THE TIME OR SENDER"
     )

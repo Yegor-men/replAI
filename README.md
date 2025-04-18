@@ -39,6 +39,7 @@ git clone https://github.com/Yegor-men/replAI
 pip install -r requirements.txt
 python main.py
 ```
+and then visit [http://localhost:7860] to open the frontend.
     
 ## Documentation
 

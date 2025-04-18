@@ -15,39 +15,65 @@ def ai_send_message(
     current_time = datetime.datetime.now()
     timestamp = current_time.strftime("%d/%m/%Y, %H:%M")
 
-    chat_history = load_json_chat(json_chat_filepath)
+    try:
+        chat_history = load_json_chat(json_chat_filepath, ai_class_instance)
 
-    formatted_messages = format_chat(
-        loaded_json_chat=chat_history,
-        ai_class_instance=ai_class_instance,
-    )
-    formatted_messages += [
-        {
-            "role": "system",
-            "content": system_prompt_function(
-                ai_class_instance, user_class_instance, timestamp
-            ),
-        }
-    ]
+        messages = [
+            {
+                "role": "system",
+                "content": system_prompt_function(
+                    ai_class_instance, user_class_instance, timestamp
+                ),
+            }
+        ]
+        messages.extend(chat_history)
 
-    response = ""
-    stream = ollama.chat(
-        model=model_name,
-        messages=formatted_messages,
-        stream=True,
-    )
+        # Make the API call
+        stream = ollama.chat(
+            model=model_name,
+            messages=messages,
+            stream=True,
+        )
 
-    for chunk in stream:
-        content = chunk["message"]["content"]
-        content = content.replace("~", "\n")
-        print(content, end="", flush=True)
-        response += chunk["message"]["content"]
+        # Collect the raw response
+        response = ""
+        for chunk in stream:
+            if chunk and "message" in chunk and "content" in chunk["message"]:
+                content = chunk["message"]["content"]
+                # Don't print timestamps/names that might be in the response
+                print(
+                    content.replace(
+                        "[" + timestamp + "] - " + ai_class_instance.name + ": ", ""
+                    ),
+                    end="",
+                    flush=True,
+                )
+                response += content
 
-    chat_history.append(
-        {"sender": ai_class_instance.name, "timestamp": timestamp, "message": response}
-    )
+        if not response:
+            response = "I apologize, but I couldn't generate a response."
 
-    save_json_chat(
-        loaded_json_chat=chat_history,
-        json_chat_filename=json_chat_filepath,
-    )
+        # Clean up potential timestamp prefixes from the model's response
+        clean_response = response.replace(
+            "[" + timestamp + "] - " + ai_class_instance.name + ": ", ""
+        )
+
+        # Add to chat history with single timestamp prefix
+        chat_history.append(
+            {
+                "role": "assistant",
+                "content": f"[{timestamp}] - {ai_class_instance.name}: {clean_response}",
+            }
+        )
+
+        save_json_chat(
+            loaded_json_chat=chat_history,
+            json_chat_filename=json_chat_filepath,
+            ai_class_instance=ai_class_instance,
+        )
+
+        return clean_response
+
+    except Exception as e:
+        print(f"Error in ai_send_message: {e}")
+        return "I encountered an error while trying to respond."
