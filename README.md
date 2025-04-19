@@ -21,6 +21,7 @@ replAI (pronounced [/ɹɪˈplaɪ/](https://en.wiktionary.org/wiki/reply)) aims t
 - Allows both the user and the AI to send messages whenever, like in real texting
 ## Roadmap
 
+- Create chats, personas, etc from within the webui
 - Make the AI sometimes initiate conversations by itself
 - Add memory embedding
 - Implement image uploads and image recognition
@@ -35,9 +36,11 @@ This assumes that you have the backend (Ollama for now) installed.
 
 Simply clone the repo, install the python requirements and run main.py
 
+FOR NOW: make sure you download a "v" version, not a "uf" version. Simply clone the latest v version while I don't have branches yet.
+
 ```bash
 git clone https://github.com/Yegor-men/replAI
-pip install -r requirements.txt
+# pip install -r requirements.txt
 python main.py
 ```
 and then visit [http://localhost:7860]() to open the frontend.

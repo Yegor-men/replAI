@@ -3,6 +3,9 @@ import ollama
 import os
 import json
 import re
+from datetime import datetime
+import yaml
+from jinja2 import Template
 
 chats_filepath = "chats"
 sys_prompts_filepath = "system_prompts"
@@ -22,31 +25,40 @@ def list_ollama_models():
     return models
 
 
-def load_ndjson(json_filepath: str) -> list[dict]:
-    """
-    Read a newline-delimited JSON file and return a list of dicts.
-    """
-    history = []
-    with open(json_filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                history.append(json.loads(line))
-    return history
+def load_and_display_file(filepath: str, filename: str):
+    """Fetch a file and render it in a textbox"""
+    path = os.path.join(filepath, filename)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        return f"Error loading file: {str(e)}"
 
 
-def sanitize_ndjson_into_history(
-    ndjson_filepath: str,
-    user_name: str,
+def load_ndjson_into_memory(
+    ndjson_filename: str,
+    max_entries: int = None,
 ) -> list[dict]:
-    """
-    Convert raw NDJSON entries with arbitrary 'sender' names into Gradio Chatbot format:
-    - role: "user" or "assistant"
-    - content: "[date time] sender: message"
-    """
-    raw = load_ndjson(ndjson_filepath)
+    path = os.path.join(chats_filepath, ndjson_filename)
+
+    entries = []
+    with open(path, "r", encoding="utf-8") as f:
+        entries = [json.loads(line) for line in f if line.strip()]
+    max_entries = min(len(entries), max_entries)
+    return entries[-max_entries:] if max_entries else entries
+
+
+def sanitize_loaded_ndjson_into_history(
+    loaded_ndjson: list[dict],
+    chara_card_filename: str,
+) -> list[dict]:
+    chara_card_path = os.path.join(character_cards_filepath, chara_card_filename)
+    with open(chara_card_path) as f:
+        chara_card = yaml.safe_load(f)
+        user_name = chara_card.get("name")
+
     history = []
-    for entry in raw:
+    for entry in loaded_ndjson:
         sender = entry["sender"]
         role = "user" if sender == user_name else "assistant"
         timestamp = f"{entry['date']} at {entry['time']}"
@@ -55,57 +67,83 @@ def sanitize_ndjson_into_history(
     return history
 
 
-def append_ndjson_entry(entry: dict, json_filepath: str) -> None:
-    """
-    Append one JSON object as a new line to the NDJSON file.
-    """
-    with open(json_filepath, "a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, ensure_ascii=False))
-        f.write("\n")
-
-
-from datetime import datetime
-
-
-def sanitize_sender_message(
-    sender: str,
+def sanitize_and_send_message(
+    ndjson_filename,
+    sender_chara_card_filename,
     content: str,
 ):
+    chara_card_path = os.path.join(character_cards_filepath, sender_chara_card_filename)
+    with open(chara_card_path) as f:
+        chara_card = yaml.safe_load(f)
+        chara_name = chara_card.get("name")
+
     safe_content = content.replace("\n", " ").strip()
 
     now = datetime.now()
     date_str = now.strftime("%d/%m/%Y")
     time_str = now.strftime("%H:%M")
 
-    return {
-        "sender": sender,
+    message = {
+        "sender": chara_name,
         "content": safe_content,
         "date": date_str,
         "time": time_str,
     }
 
+    path = os.path.join(chats_filepath, ndjson_filename)
 
-def render_chat(chat_filename, user_name):
-    """Loads the NDJSON and returns a Gradio‑ready history list."""
-    path = os.path.join(chats_filepath, chat_filename)
-    return sanitize_ndjson_into_history(path, user_name[:-3])
-
-
-def on_send(chat_filename, user_name, message):
-    """Sanitize + append the user message, then re-render the chat."""
-    path = os.path.join(chats_filepath, chat_filename)
-    # 1) sanitize and append
-    entry = sanitize_sender_message(user_name[:-3], message)
-    append_ndjson_entry(entry, path)
-    # 2) return updated history and clear the textbox
-    history = sanitize_ndjson_into_history(path, user_name[:-3])
-    return gr.update(value=history), gr.update(value="")
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(message, ensure_ascii=False) + "\n")
 
 
-sample_history = sanitize_ndjson_into_history(
-    ndjson_filepath="chats/ndjson_history_sample.ndjson",
-    user_name="alice",
-)
+def ollama_generate_message(
+    model_name: str,
+    ndjson_filename: str,
+    user_chara_card_filename: str,
+    ai_chara_card_filename: str,
+    sys_prompt_filename: str,
+    num_messages: int = 1000,
+):
+    sys_prompt_path = os.path.join(sys_prompts_filepath, sys_prompt_filename)
+    ai_chara_card_path = os.path.join(character_cards_filepath, ai_chara_card_filename)
+    user_chara_card_path = os.path.join(
+        character_cards_filepath, user_chara_card_filename
+    )
+
+    with open(ai_chara_card_path) as f:
+        ai_card = yaml.safe_load(f)
+    with open(user_chara_card_path) as f:
+        user_card = yaml.safe_load(f)
+    with open(sys_prompt_path) as f:
+        tpl_text = f.read()
+    system_message = Template(tpl_text).render(
+        ai={
+            "name": ai_card["name"],
+            "description": ai_card["description"],
+        },
+        user={"name": user_card["name"], "description": user_card["description"]},
+    )
+    system_msg = {"role": "system", "content": system_message}
+    in_mem = load_ndjson_into_memory(ndjson_filename, num_messages)
+    curated = sanitize_loaded_ndjson_into_history(in_mem, user_chara_card_filename)
+
+    messages = [system_msg, *curated]
+
+    response = ollama.chat(model_name, messages=messages)
+    model_message = response["message"]["content"]
+
+    sanitize_and_send_message(ndjson_filename, ai_chara_card_filename, model_message)
+
+
+def render_chat(
+    ndjson_filename,
+    user_chara_card_filename,
+    last_n_messages_to_render: int = 1000,
+):
+    chat_path = os.path.join(chats_filepath, ndjson_filename)
+    in_mem = load_ndjson_into_memory(ndjson_filename, last_n_messages_to_render)
+    cleaned = sanitize_loaded_ndjson_into_history(in_mem, user_chara_card_filename)
+    return cleaned
 
 
 # https://huggingface.co/spaces/gradio/theme-gallery
@@ -117,27 +155,31 @@ with gr.Blocks(
         with gr.Tab("Model Settings"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    model_dropdown = gr.Dropdown(
+                    model_name = gr.Dropdown(
                         choices=list_ollama_models(),
-                        label="Model",
+                        label="Model Editor",
                         info="Select the Ollama model to use. Heavier models are recommended for both quality and more realistic speed (slower).",
                         interactive=True,
                     )
                     with gr.Column():
-                        gr.Dropdown(
+                        model_template = gr.Dropdown(
                             choices=list_files_in_filepath(model_templates_filepath),
                             label="Load Template",
                             info='Select to load a saved template for a model to use. Make sure to check the "Override Defaults" button in the bottom right for the changes to take effect.',
                             interactive=True,
                         )
                     with gr.Column():
-                        gr.Textbox(
+                        model_template_filename = gr.Textbox(
                             label="Filename",
                             info="Filename for the model template. This is how the template is/will be saved/deleted in the model_templates/ folder.",
                             interactive=True,
                         )
-                    gr.Button(value="Save Model Template", interactive=True)
-                    gr.Button(value="Delete Model Template", interactive=True)
+                    save_model_template = gr.Button(
+                        value="Save Model Template", interactive=True
+                    )
+                    delete_model_template = gr.Button(
+                        value="Delete Model Template", interactive=True
+                    )
 
                 with gr.Column(scale=1):
                     temperature = gr.Slider(
@@ -255,7 +297,7 @@ with gr.Blocks(
                             info="Check this box to override defaults with the changes above. Otherwise, Ollama model file defaults will be used instead. Recommended to keep this off unless you know what you are doing.",
                         )
 
-        with gr.Tab("Character Cards"):
+        with gr.Tab("Character Card Editor"):
             with gr.Row():
                 with gr.Column(scale=1):
                     gr.Dropdown(
@@ -274,15 +316,12 @@ with gr.Blocks(
                         gr.Button(value="Delete Character Card", interactive=True)
 
                 with gr.Column(scale=3):
-
-                    # TODO MAKE THIS THING JUST A COUPLE SELECTABLE BOXES NOT THE WHOLE SCRIPT
-
                     gr.TextArea(
                         label="Character Card",
-                        info="The raw python file of the character card. replAI pulls data from these character cards to instantiate characters (instances of the Character class) and then uses these class instances later in the system prompt. Recommended to not modify this much (for now), unless if you are willing to dig in some extra code.",
+                        info="The raw yaml file of the character card. replAI pulls data from these character cards to instantiate characters (instances of the Character class) and then uses these class instances later in the system prompt. Recommended to not modify this much (for now), unless if you are willing to dig in some extra code.",
                     )
 
-        with gr.Tab("System Prompts"):
+        with gr.Tab("System Prompt Editor"):
             with gr.Row():
                 with gr.Column(scale=1):
                     gr.Dropdown(
@@ -307,7 +346,7 @@ with gr.Blocks(
                         interactive=True,
                     )
 
-        with gr.Tab("Human to AI chat"):
+        with gr.Tab("1 on 1 chat"):
             with gr.Row():
                 with gr.Column(scale=1):
                     with gr.Column():
@@ -325,19 +364,27 @@ with gr.Blocks(
                         )
                         gr.Button(value="Create New Chat", interactive=True)
                         gr.Button(value="Delete Selected Chat", interactive=True)
+                    with gr.Column():
+                        ollama_model = gr.Dropdown(
+                            choices=list_ollama_models(),
+                            label="Load Model",
+                            info="Select the model to use.",
+                            interactive=True,
+                        )
 
                 with gr.Column(scale=2):
                     with gr.Group():
                         chatbox = gr.Chatbot(
                             elem_id="chatbox",
-                            value=sample_history,
-                            type="messages",
+                            label=None,
+                            value=None,
                             show_label=False,
+                            placeholder="The chat history will appear here.",
+                            type="messages",
                             resizable=True,
                             show_copy_button=True,
                             layout="bubble",
                             group_consecutive_messages=False,
-                            placeholder="The chat history will appear here",
                         )
                         user_message = gr.Textbox(
                             elem_id="user_message",
@@ -352,36 +399,132 @@ with gr.Blocks(
                         user_character = gr.Dropdown(
                             choices=list_files_in_filepath(character_cards_filepath),
                             label="User Character",
-                            info="Info about the character that the human is roleplaying.",
+                            info="Select the character you will be roleplaying.",
                             interactive=True,
                         )
-                        gr.TextArea(
-                            label="user character details",
+                        user_character_description = gr.TextArea(
+                            label=None,
+                            show_label=False,
+                            value=None,
+                            placeholder="Your character's description will appear here.",
                             interactive=False,
                         )
-                    with gr.Column():
                         ai_character = gr.Dropdown(
                             choices=list_files_in_filepath(character_cards_filepath),
                             label="AI Character",
-                            info="Info about the character that the AI is roleplaying",
+                            info="Select the character that the AI will be roleplaying.",
                             interactive=True,
                         )
-                        gr.TextArea(
-                            label="AI character details",
+                        ai_character_description = gr.TextArea(
+                            label=None,
+                            show_label=False,
+                            value=None,
+                            placeholder="The AI's character description will appear here.",
+                            interactive=False,
+                        )
+                    with gr.Column():
+                        system_prompt = gr.Dropdown(
+                            choices=list_files_in_filepath(sys_prompts_filepath),
+                            label="System Prompt",
+                            info="Select the system prompt that the AI will use.",
+                            interactive=True,
+                        )
+                        system_prompt_description = gr.TextArea(
+                            label=None,
+                            show_label=False,
+                            value=None,
+                            placeholder="System prompt description will appear here.",
                             interactive=False,
                         )
 
-    for inp in (current_chat, user_character, ai_character):
-        inp.change(
-            fn=render_chat, inputs=[current_chat, user_character], outputs=chatbox
-        )
+    current_chat.select(
+        fn=lambda x: x, inputs=current_chat, outputs=current_chat_filename
+    ).then(fn=render_chat, inputs=[current_chat, user_character], outputs=chatbox)
 
-    # — Bind Enter in textbox to send flow —
+    user_character.select(
+        fn=lambda f: load_and_display_file(character_cards_filepath, f),
+        inputs=user_character,
+        outputs=user_character_description,
+    ).then(fn=render_chat, inputs=[current_chat, user_character], outputs=chatbox)
+
+    ai_character.select(
+        fn=lambda f: load_and_display_file(character_cards_filepath, f),
+        inputs=ai_character,
+        outputs=ai_character_description,
+    ).then(fn=render_chat, inputs=[current_chat, user_character], outputs=chatbox)
+
+    system_prompt.select(
+        fn=lambda f: load_and_display_file(sys_prompts_filepath, f),
+        inputs=system_prompt,
+        outputs=system_prompt_description,
+    )
+
     user_message.submit(
-        fn=on_send,
+        fn=sanitize_and_send_message,
         inputs=[current_chat, user_character, user_message],
-        outputs=[chatbox, user_message],
-        queue=False,
+        outputs=None,
+    ).then(
+        fn=lambda: "",
+        inputs=None,
+        outputs=user_message,
+    ).then(
+        fn=render_chat,
+        inputs=[current_chat, user_character],
+        outputs=chatbox,
+    ).then(
+        fn=lambda a, b, c, d, e: ollama_generate_message(
+            model_name=a,
+            ndjson_filename=b,
+            user_chara_card_filename=c,
+            ai_chara_card_filename=d,
+            sys_prompt_filename=e,
+            num_messages=1000,
+        ),
+        inputs=[
+            ollama_model,
+            current_chat,
+            user_character,
+            ai_character,
+            system_prompt,
+        ],
+        outputs=None,
+    ).then(
+        fn=render_chat,
+        inputs=[current_chat, user_character],
+        outputs=chatbox,
+    )
+
+    demo.load(
+        fn=lambda: (
+            current_chat.value if current_chat.value else None,
+            (
+                load_and_display_file(character_cards_filepath, user_character.value)
+                if user_character.value
+                else None
+            ),
+            (
+                load_and_display_file(character_cards_filepath, ai_character.value)
+                if ai_character.value
+                else None
+            ),
+            (
+                load_and_display_file(sys_prompts_filepath, system_prompt.value)
+                if system_prompt.value
+                else None
+            ),
+            (
+                render_chat(current_chat.value, user_character.value)
+                if current_chat.value and user_character.value
+                else None
+            ),
+        ),
+        outputs=[
+            current_chat_filename,
+            user_character_description,
+            ai_character_description,
+            system_prompt_description,
+            chatbox,
+        ],
     )
 
 demo.launch(favicon_path="misc/replAI_favicon_rounded.ico")

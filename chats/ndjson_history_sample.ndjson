@@ -1,0 +1,22 @@
+{"sender": "bob","content": "help me","date": "19/04/2025","time": "16:44"}
+{"sender": "alice","content": "i wont help you","date": "19/04/2025","time": "16:45"}
+{"sender": "alice","content": "one is in more dire need of help","date": "19/04/2025","time": "16:45"}
+{"sender": "bob","content": "nuh uh","date": "19/04/2025","time": "16:44"}
+{"sender": "bob","content": "help a disheveled fellow out first","date": "19/04/2027","time": "16:45"}
+{"sender": "alice","content": "cap","date": "19/04/2025","time": "16:45"}
+{"sender": "alice.py", "content": "hi", "date": "19/04/2025", "time": "18:45"}
+{"sender": "alice.py", "content": "hi", "date": "19/04/2025", "time": "19:03"}
+{"sender": "alice.py", "content": "how are you", "date": "19/04/2025", "time": "19:03"}
+{"sender": "alice.py", "content": "what is ur name", "date": "19/04/2025", "time": "19:03"}
+{"sender": "replAI.py", "content": "yo", "date": "19/04/2025", "time": "19:03"}
+{"sender": "alice", "content": "hi", "date": "19/04/2025", "time": "19:04"}
+{"sender": "alice", "content": "How are you?", "date": "19/04/2025", "time": "19:04"}
+{"sender": "alice", "content": "hello  hi", "date": "19/04/2025", "time": "19:04"}
+{"sender": "alice", "content": "wyoo", "date": "19/04/2025", "time": "19:04"}
+{"sender": "alice", "content": "wtf", "date": "19/04/2025", "time": "19:04"}
+{"sender": "alice", "content": "skibidi bop", "date": "19/04/2025", "time": "19:04"}
+{"sender": "bob", "content": "hello alice i am bob", "date": "19/04/2025", "time": "19:05"}
+{"sender": "bob", "content": "hi", "date": "19/04/2025", "time": "20:24"}
+{"sender": "bob", "content": "yoooooo   skibidi", "date": "19/04/2025", "time": "20:24"}
+{"sender": "alice", "content": "foo", "date": "19/04/2025", "time": "20:58"}
+{"sender": "alice", "content": "bar", "date": "19/04/2025", "time": "20:58"}
